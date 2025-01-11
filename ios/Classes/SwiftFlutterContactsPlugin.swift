@@ -612,11 +612,50 @@ public class SwiftFlutterContactsPlugin: NSObject, FlutterPlugin, FlutterStreamH
                 }
             }
         case "openExternalPick":
+            func getTopViewController(_ rootViewController: UIViewController?) -> UIViewController? {
+                if let presented = rootViewController?.presentedViewController {
+                    return getTopViewController(presented)
+                }
+                if let navigationController = rootViewController as? UINavigationController {
+                    return getTopViewController(navigationController.visibleViewController)
+                }
+                if let tabBarController = rootViewController as? UITabBarController {
+                    return getTopViewController(tabBarController.selectedViewController)
+                }
+                return rootViewController
+            }
+            
+            print("debug: openExternalPick invoked here")
             DispatchQueue.main.async {
+                print("debug: entered into openExternalPick")
+                
+                // Get the top controller
+                guard let topController = getTopViewController(self.rootViewController) else {
+                    print("debug: No active view controller found")
+                    result(FlutterError(
+                        code: "NO_ACTIVE_CONTROLLER",
+                        message: "No active view controller found.",
+                        details: nil
+                    ))
+                    return
+                }
+                
+                // Check that another controller isn't present already
+                if topController.presentedViewController != nil {
+                    print("debug: A view controller is already presented: \(type(of: topController.presentedViewController!))")
+                    result(FlutterError(
+                        code: "ALREADY_PRESENTING",
+                        message: "Another view controller is already being presented.",
+                        details: nil
+                    ))
+                    return
+                }
+                
                 let contactPicker = CNContactPickerViewController()
                 contactPicker.delegate = self
-                self.rootViewController.present(contactPicker, animated: true, completion: nil)
+                topController.present(contactPicker, animated: true, completion: nil)
                 self.externalResult = result
+                print("debug: done.")
             }
         case "openExternalInsert":
             DispatchQueue.main.async {
